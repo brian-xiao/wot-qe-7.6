@@ -98,7 +98,7 @@ SUBROUTINE gcxc( length, rho_in, grho_in, sx_out, sc_out, v1x_out, &
 !$omp          v2x, v2x_, v2xsr, sc, v1c, v2c, iflag, in_err ) &
 !$omp shared( rho_in, grho_in, length, igcx, exx_started, &
 !$omp         grho_threshold_gga, rho_threshold_gga, gau_parameter, &
-!$omp         screening_parameter, exx_fraction, igcc, v1x_out, v2x_out, &
+!$omp         screening_parameter, exx_fraction, rsh_beta, igcc, v1x_out, v2x_out, &
 !$omp         v1c_out, v2c_out, sx_out, sc_out, err_out )
 !$omp do
 #endif

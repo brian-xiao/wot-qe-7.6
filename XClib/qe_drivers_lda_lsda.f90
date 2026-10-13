@@ -96,7 +96,7 @@ SUBROUTINE xc_lda( length, rho_in, ex_out, ec_out, vx_out, vc_out )
 !$omp parallel if(ntids==1) default(none) &
 !$omp private( rho, rs, ex, ec, ec_, vx, vc, vc_ ) &
 !$omp shared( rho_in, length, iexch, icorr, ex_out, ec_out, vx_out, vc_out, &
-!$omp         finite_size_cell_volume, exx_fraction, exx_started, &
+!$omp         finite_size_cell_volume, exx_fraction, rsh_beta, exx_started, &
 !$omp         rho_threshold_lda )
 !$omp do
 #endif
@@ -333,7 +333,7 @@ SUBROUTINE xc_lsda( length, rho_in, zeta_in, ex_out, ec_out, vx_out, vc_out )
 !$omp parallel if(ntids==1) default(none) &
 !$omp private( rho, rs, zeta, ex, ec, ec_, vx_up, vx_dw, vc_up, &
 !$omp          vc_dw, vc_up_, vc_dw_ ) &
-!$omp shared( length, iexch, icorr, exx_fraction, &
+!$omp shared( length, iexch, icorr, exx_fraction, rsh_beta, &
 !$omp         vx_out, vc_out, ex_out, ec_out, &
 !$omp         zeta_in, exx_started, rho_in, rho_threshold_lda )
 !$omp do
