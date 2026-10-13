@@ -90,6 +90,10 @@ MODULE dft_setting_params
     !! Screening parameter for PBE exchange
     REAL(DP) :: gau_parameter
     !! Gaussian parameter for PBE exchange
+    ! Debug Zhenfei Liu 9/22/2015 (ported to QE 7.6: 2026-10-08)
+    REAL(DP) :: rsh_beta = 0.0_DP
+    !! RSH beta parameter: fraction of erf-screened (LR) Fock exchange
+    ! DONE Debug.
     !
     INTEGER  :: imeta = notset
     !! MGGA exchange index

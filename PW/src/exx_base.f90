@@ -102,6 +102,11 @@ MODULE exx_base
   REAL(DP) :: gau_scrlen = 0.d0
   !! gau-pbe screening
   !
+  ! Debug Zhenfei Liu 9/25/2015 (ported to QE 7.6: 2026-10-08)
+  REAL(DP) :: beta_in_rsh = 0._dp
+  !! RSH beta parameter (LR erf-screened Fock fraction)
+  ! DONE Debug.
+  !
   ! ... cutoff techniques
   LOGICAL :: use_coulomb_vcut_ws = .FALSE.
   LOGICAL :: use_coulomb_vcut_spheric = .FALSE.
@@ -839,7 +844,14 @@ MODULE exx_base
          !
       ELSEIF (qq > eps_qdiv) THEN
          !
-         IF ( erfc_scrlen > 0  ) THEN
+         ! Debug Zhenfei Liu 9/26/2015 (ported to QE 7.6: 2026-10-08)
+         ! this equals: (alpha+beta) * 4pi/q^2 - beta*(1-exp[-q^2/4mu^2]) * 4pi/q^2
+         IF ( beta_in_rsh /= 0._DP ) THEN
+            ! RSH: normalized kernel so outer exxalfa gives (alpha + beta*exp)*4pi/q^2
+            fac(ig) = e2*fpi/qq * (1._DP + (beta_in_rsh/exxalfa) * &
+                      EXP(-qq/4._DP/erfc_scrlen**2)) * grid_factor_track(ig)
+         ! DONE Debug.
+         ELSEIF ( erfc_scrlen > 0  ) THEN
             fac(ig) = e2*fpi/qq*(1._DP-EXP(-qq/4._DP/erfc_scrlen**2)) * grid_factor_track(ig)
          ELSEIF( erf_scrlen > 0 ) THEN
             fac(ig) = e2*fpi/qq*(EXP(-qq/4._DP/erf_scrlen**2)) * grid_factor_track(ig)
@@ -931,7 +943,14 @@ MODULE exx_base
                  !
                  IF (.NOT.on_double_grid) THEN
                     IF ( qq > 1.d-8 ) THEN
-                       IF ( erfc_scrlen > 0 ) THEN
+                       ! Debug Zhenfei Liu 9/27/2015 (ported to QE 7.6: 2026-10-08)
+                       ! this equals: (alpha+beta)*1 - beta*(1-exp[-q^2/4mu^2])
+                       IF ( beta_in_rsh /= 0._DP ) THEN
+                          div = div + EXP( -alpha * qq) / qq * &
+                                (1._dp + (beta_in_rsh/exxalfa) * &
+                                EXP(-qq*tpiba2/4.d0/erfc_scrlen**2)) * grid_factor
+                       ! DONE Debug.
+                       ELSEIF ( erfc_scrlen > 0 ) THEN
                           div = div + EXP( -alpha * qq) / qq * &
                                 (1._dp-EXP(-qq*tpiba2/4.d0/erfc_scrlen**2)) * grid_factor
                        ELSEIF ( erf_scrlen >0 ) THEN
@@ -978,7 +997,13 @@ MODULE exx_base
      DO iq = 0, nqq
         q_ = dq * (iq+0.5d0)
         qq = q_ * q_
-        IF ( erfc_scrlen > 0 ) THEN
+        ! Debug Zhenfei Liu 9/27/2015 (ported to QE 7.6: 2026-10-08)
+        ! this equals: (alpha+beta)*1 - beta*(1-exp[-q^2/4mu^2])
+        IF ( beta_in_rsh /= 0._DP ) THEN
+           aa = aa - EXP( -alpha * qq) * (1._dp + (beta_in_rsh/exxalfa) * &
+                EXP(-qq/4.d0/erfc_scrlen**2)) * dq
+        ! DONE Debug.
+        ELSEIF ( erfc_scrlen > 0 ) THEN
            aa = aa  -EXP( -alpha * qq) * EXP(-qq/4.d0/erfc_scrlen**2)*dq
         ELSEIF ( erf_scrlen > 0 ) THEN
            aa = 0._dp

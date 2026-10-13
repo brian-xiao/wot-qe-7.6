@@ -74,10 +74,13 @@ MODULE control_flags
   !
   INTEGER :: &
     ngm0,             &! used in mix_rho
-    nexxiter,         &! the maximum number of outer iteration (exx)
+    nexxiter,          &! the maximum number of outer iteration (exx)
     niter,            &! the maximum number of iteration
     nmix,             &! the number of iteration kept in the history
     imix               ! the type of mixing (0=plain,1=TF,2=local-TF)
+  ! Debug Zhenfei Liu 10/21/2015 (ported to QE 7.6: 2026-10-08)
+  INTEGER :: pert_hyb = 0  ! if > 0, exit hybrid loop after this many EXX iterations (perturbative mode)
+  ! DONE Debug.
   INTEGER :: &
     n_scf_steps        ! number of scf iterations to reach convergence
   REAL(DP) :: &

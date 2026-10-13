@@ -267,11 +267,11 @@ MODULE exx
     USE symm_base,            ONLY : nsym, sr
     USE xc_lib,               ONLY : xclib_get_exx_fraction, start_exx,          &
                                      get_screening_parameter, get_gau_parameter, &
-                                     exx_is_active
+                                     get_rsh_beta, exx_is_active
     USE uspp,                 ONLY : okvan
     USE paw_variables,        ONLY : okpaw
     USE exx_base,             ONLY : nkqs, index_sym, index_xk, xkq_collect, exx_set_symm, exxdiv, &
-                                     erfc_scrlen, gau_scrlen, exx_divergence, d_spin
+                                     erfc_scrlen, gau_scrlen, beta_in_rsh, exx_divergence, d_spin
     USE exx_std,              ONLY : exxinit_std
     USE exx_bp,               ONLY : exxinit_bp
     USE us_exx,               ONLY : rotate_becxx
@@ -295,9 +295,14 @@ MODULE exx
     IF (.NOT.exx_is_active()) THEN
        !
        erfc_scrlen = get_screening_parameter()
-       gau_scrlen = get_gau_parameter()
-       exxdiv  = exx_divergence()
-       exxalfa = xclib_get_exx_fraction()
+       gau_scrlen  = get_gau_parameter()
+       ! Debug Zhenfei Liu 9/25/2015, added get_rsh_beta above (ported to QE 7.6: 2026-10-08)
+       beta_in_rsh = get_rsh_beta()
+       ! DONE Debug.
+       ! Debug Zhenfei Liu 10/8/2015 - I think it's important to get exxalfa first,
+       ! then execute the divergence. This is important as explicitly tested.
+       exxalfa     = xclib_get_exx_fraction()   ! must precede exx_divergence (uses exxalfa)
+       exxdiv      = exx_divergence()
        !
        CALL start_exx()
     ENDIF

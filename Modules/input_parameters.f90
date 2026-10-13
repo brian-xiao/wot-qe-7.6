@@ -487,6 +487,11 @@ MODULE input_parameters
         REAL(DP) :: gau_parameter = -1.0_DP
         !! gau-pbe
           !
+        ! Debug Zhenfei Liu 9/22/2015 (ported to QE 7.6: 2026-10-08)
+        REAL(DP) :: rsh_beta = -1.0_DP
+        !! RSH beta parameter; negative = use functional default
+        ! DONE Debug.
+          !
         CHARACTER(len=80) :: exxdiv_treatment = 'gygi-baldereschi'
         !! define how ro cure the Coulomb divergence in EXX.
         CHARACTER(len=80) :: exxdiv_treatment_allowed(6)
@@ -697,7 +702,7 @@ MODULE input_parameters
              nqx1, nqx2, nqx3, ecutfock, localization_thr, scdm, ace,         &
              scdmden, scdmgrd, nscdm, n_proj,                                 &
              exxdiv_treatment, x_gamma_extrapolation, yukawa, ecutvcut,       &
-             exx_fraction, exx_type, screening_parameter, ref_alat,      &
+             exx_fraction, exx_type, screening_parameter, rsh_beta, ref_alat, &
              noncolin, lspinorb, starting_spin_angle, lambda, angle1, angle2, &
              report, lforcet,                                                 &
              constrained_magnetization, B_field, fixed_magnetization,         &
@@ -998,6 +1003,11 @@ MODULE input_parameters
         !! if TRUE, in CP's conjugate gradient routine, precondition each band
         !! with its kinetic energy (see CPV/src/cg_sub.f90)
 
+        ! Debug Zhenfei Liu 10/21/2015 (ported to QE 7.6: 2026-10-08)
+        INTEGER :: perturb_hyb = 0
+        !! if > 0, exit hybrid outer loop after this many EXX iterations (perturbative hybrid)
+        ! DONE Debug.
+
         INTEGER :: maxiter = 100
         !! max number of conjugate gradient iterations
 
@@ -1090,7 +1100,7 @@ MODULE input_parameters
           occupation_constraints, niter_cg_restart,                    &
           niter_cold_restart, lambda_cold, efield_cart, real_space,    &
           tcpbo,emass_emin, emass_cutoff_emin, electron_damping_emin,  &
-          dt_emin, efield_phase, pre_state
+          dt_emin, efield_phase, pre_state, perturb_hyb
 
 !
 !=----------------------------------------------------------------------------=!

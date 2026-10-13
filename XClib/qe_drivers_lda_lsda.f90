@@ -54,7 +54,7 @@ SUBROUTINE xc_lda( length, rho_in, ex_out, ec_out, vx_out, vc_out )
   !! Same for correlation.
   !
   USE dft_setting_params,   ONLY: iexch, icorr, rho_threshold_lda, exx_started, &
-                                  exx_fraction, finite_size_cell_volume
+                                  exx_fraction, rsh_beta, finite_size_cell_volume
   !
   IMPLICIT NONE
   !
@@ -157,6 +157,16 @@ SUBROUTINE xc_lda( length, rho_in, ex_out, ec_out, vx_out, vc_out )
            ex = (1.0_DP - exx_fraction) * ex
            vx = (1.0_DP - exx_fraction) * vx
         ENDIF
+        !
+     ! Debug Zhenfei Liu 9/30/2015 (ported to QE 7.6: 2026-10-08)
+     CASE( 11 )                     ! 'SLZ': slater scaled by (1-alpha-beta) for RSH
+        !
+        CALL slater( rs, ex, vx )
+        IF ( exx_started ) THEN
+           ex = (1.0_DP - exx_fraction - rsh_beta) * ex
+           vx = (1.0_DP - exx_fraction - rsh_beta) * vx
+        ENDIF
+        ! DONE Debug.
         !
      CASE DEFAULT
         !
@@ -278,7 +288,7 @@ SUBROUTINE xc_lsda( length, rho_in, zeta_in, ex_out, ec_out, vx_out, vc_out )
   !!    * Perdew & Wang.
   !
   USE dft_setting_params,   ONLY: iexch, icorr, rho_threshold_lda, exx_started, &
-                                  exx_fraction
+                                  exx_fraction, rsh_beta
   !
   IMPLICIT NONE
   !
@@ -394,6 +404,17 @@ SUBROUTINE xc_lsda( length, rho_in, zeta_in, ex_out, ec_out, vx_out, vc_out )
            vx_up = (1.0_DP - exx_fraction) * vx_up
            vx_dw = (1.0_DP - exx_fraction) * vx_dw
         ENDIF
+        !
+     ! Debug Zhenfei Liu 9/30/2015 (ported to QE 7.6: 2026-10-08)
+     CASE( 11 )                                     ! 'SLZ': slater scaled by (1-alpha-beta) for RSH
+        !
+        CALL slater_spin( rho, zeta, ex, vx_up, vx_dw )
+        IF ( exx_started ) THEN
+           ex    = (1.0_DP - exx_fraction - rsh_beta) * ex
+           vx_up = (1.0_DP - exx_fraction - rsh_beta) * vx_up
+           vx_dw = (1.0_DP - exx_fraction - rsh_beta) * vx_dw
+        ENDIF
+        ! DONE Debug.
         !
      CASE DEFAULT
         !

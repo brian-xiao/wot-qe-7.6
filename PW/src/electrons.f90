@@ -25,8 +25,9 @@ SUBROUTINE electrons()
   USE tsvdw_module,         ONLY : EtsvdW
   USE scf,                  ONLY : rho, rho_core, rhog_core, tau_core, v, vltot, &
                                    vrs, kedtau, vnew
-  USE control_flags,        ONLY : tr2, nexxiter, conv_elec, restart, lmd, &
+  USE control_flags,        ONLY : tr2, nexxiter, pert_hyb, conv_elec, restart, lmd, &
                                    do_makov_payne, sic
+  USE starting_scf,         ONLY : starting_wfc
   USE sic_mod,              ONLY : sic_energy, occ_f2fn, occ_fn2f, save_rhon, sic_first
   USE io_files,             ONLY : iunres, seqopn
   USE ldaU,                 ONLY : eth
@@ -62,6 +63,10 @@ SUBROUTINE electrons()
   REAL(DP) :: exxen
   INTEGER :: idum
   !! dummy counter on iterations
+  ! debug Dahvyd Wing 04/13/2020 for printing eigenvalues (ported to QE 7.6: 2026-10-08)
+  INTEGER :: ibnd_fake
+  REAL(DP) :: fake_eig
+  ! end debug
   INTEGER :: iter
   !! counter on iterations
   INTEGER :: printout, ik, ios
@@ -169,6 +174,38 @@ SUBROUTINE electrons()
      CALL wfcinit()
      sic_first = .false.
   END IF
+  !
+  ! debug Dahvyd Wing 04/12/2020, for fixing hybrid starting_wfc='file' (ported to QE 7.6: 2026-10-08)
+  ! Hybrid restart-from-file: seed exchange operator from wavefunction file
+  IF (xclib_dft_is('hybrid') .AND. TRIM(starting_wfc) == 'file' .AND. .NOT.restart) THEN
+     WRITE(stdout,'(5x,"Hybrid restart from wavefunction file")')
+     ! give fake eigenvalues so that sum_band populates the correct orbitals
+     ! note: restart is not perfect for open-shell or magnetic systems
+     fake_eig = 0.0_DP
+     DO ibnd_fake = 1, nbnd
+        et(ibnd_fake, 1) = fake_eig
+        IF (nspin == 2) et(ibnd_fake, 2) = fake_eig
+        fake_eig = fake_eig + 1.0_DP
+     END DO
+     CALL sum_band()
+     first = .FALSE.
+     CALL exxinit(DoLoc)
+     IF (DoLoc .AND. gamma_only) THEN
+        CALL localize_orbitals()
+     ELSE IF (DoLoc) THEN
+        CALL localize_orbitals_k()
+     ENDIF
+     IF (use_ace) THEN
+        CALL aceinit(DoLoc)
+        fock2 = exxenergyace()
+     ENDIF
+     exxen = 0.5_DP * fock2
+     CALL v_of_rho( rho, rho_core, rhog_core, tau_core, &
+          ehart, etxc, vtxc, eth, etotefield, charge, v)
+     ! Fock energy before SCF loop is entered; confirms wavefunctions were read properly
+     WRITE(stdout,'(5x,"Fock energy before SCF loop:", F17.8," Ry")') 0.5_DP*fock2
+  END IF
+  ! end debug
   !
   DO idum=1,nexxiter
      !
@@ -329,6 +366,13 @@ SUBROUTINE electrons()
            RETURN
         ENDIF
         !
+        ! Debug Zhenfei Liu 10/21/2015 (ported to QE 7.6: 2026-10-08)
+        IF ( pert_hyb > 0 .AND. idum >= pert_hyb ) THEN
+           WRITE( stdout, 9102 )
+           RETURN
+        ENDIF
+        ! DONE Debug.
+        !
         IF ( adapt_thr ) THEN
            tr2 = MAX(tr2_multi * dexx, tr2_final)
            WRITE( stdout, 9121 ) tr2
@@ -369,6 +413,7 @@ SUBROUTINE electrons()
 9067 FORMAT('     est. exchange err (dexx)  =',0PF17.8,' Ry' )
 9068 FORMAT('     est. exchange err (dexx)  =',1PE17.1,' Ry' )
 9101 FORMAT(/'     EXX self-consistency reached' )
+9102 FORMAT(/'     Perturbative EXX stopped' )
 9120 FORMAT(/'     EXX convergence NOT achieved after ',i3,' iterations: stopping' )
 9121 FORMAT(/'     scf convergence threshold =',1PE17.1,' Ry' )
   !

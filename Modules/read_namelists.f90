@@ -439,6 +439,9 @@ MODULE read_namelists_module
        niter_cg_restart = 20
        etresh  = 1.E-6_DP
        pre_state = .FALSE.
+       ! Debug Zhenfei Liu 10/22/2015 (ported to QE 7.6: 2026-10-08)
+       perturb_hyb = 0
+       ! DONE Debug.
        !
        epol   = 3
        efield = 0.0_DP
@@ -986,8 +989,11 @@ MODULE read_namelists_module
        CALL mp_bcast( nqx2,                   ionode_id, intra_image_comm )
        CALL mp_bcast( nqx3,                   ionode_id, intra_image_comm )
        CALL mp_bcast( exx_fraction,           ionode_id, intra_image_comm )
-       CALL mp_bcast( screening_parameter,    ionode_id, intra_image_comm ) 
+       CALL mp_bcast( screening_parameter,    ionode_id, intra_image_comm )
        CALL mp_bcast( gau_parameter,          ionode_id, intra_image_comm )
+       ! Debug Zhenfei Liu 09/21/2015 (ported to QE 7.6: 2026-10-08)
+       CALL mp_bcast( rsh_beta,               ionode_id, intra_image_comm )
+       ! DONE Debug.
        CALL mp_bcast( exxdiv_treatment,       ionode_id, intra_image_comm )
        CALL mp_bcast( x_gamma_extrapolation,  ionode_id, intra_image_comm )
        CALL mp_bcast( yukawa,                 ionode_id, intra_image_comm )
@@ -1200,7 +1206,10 @@ MODULE read_namelists_module
        CALL mp_bcast( etresh,  ionode_id, intra_image_comm )
        CALL mp_bcast( passop,  ionode_id, intra_image_comm )
        CALL mp_bcast( niter_cg_restart, ionode_id, intra_image_comm )
-       CALL mp_bcast( pre_state, ionode_id, intra_image_comm )
+       CALL mp_bcast( pre_state,   ionode_id, intra_image_comm )
+       ! Debug Zhenfei Liu 10/22/2015 (ported to QE 7.6: 2026-10-08)
+       CALL mp_bcast( perturb_hyb, ionode_id, intra_image_comm )
+       ! DONE Debug.
        !
        ! ... electric field
        !

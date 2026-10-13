@@ -37,7 +37,7 @@ SUBROUTINE gcxc( length, rho_in, grho_in, sx_out, sc_out, v1x_out, &
   USE dft_setting_params,   ONLY: igcx, igcc, rho_threshold_gga,     &
                                   grho_threshold_gga, exx_started,   &
                                   exx_fraction, screening_parameter, &
-                                  gau_parameter
+                                  gau_parameter, rsh_beta
   USE exch_gga
   USE corr_gga
   USE beef_interface, ONLY: beefx, beeflocalcorr
@@ -224,6 +224,19 @@ SUBROUTINE gcxc( length, rho_in, grho_in, sx_out, sc_out, v1x_out, &
           v1x = v1x - exx_fraction * v1xsr
           v2x = v2x - exx_fraction * v2xsr
         ENDIF
+        !
+     ! Debug Zhenfei Liu 09/23/2015 (ported to QE 7.6: 2026-10-08)
+     CASE( 52 ) ! 'RSH': generalised range-separated hybrid
+        !
+        CALL pbex( rho, grho, 1, sx, v1x, v2x )
+        !
+        IF (exx_started) THEN
+          CALL pbexsr( rho, grho, sxsr, v1xsr, v2xsr, screening_parameter, in_err )
+          sx  = (1.0_DP - exx_fraction - rsh_beta)*sx  + rsh_beta*sxsr
+          v1x = (1.0_DP - exx_fraction - rsh_beta)*v1x + rsh_beta*v1xsr
+          v2x = (1.0_DP - exx_fraction - rsh_beta)*v2x + rsh_beta*v2xsr
+        ENDIF
+        ! DONE Debug.
         !
      CASE( 13 ) ! 'rPW86'
         !
@@ -475,7 +488,7 @@ SUBROUTINE gcx_spin( length, rho_in, grho2_in, sx_tot, v1x_out, v2x_out, err_out
   !
   USE dft_setting_params,   ONLY: igcx, igcc, exx_started,   &
                                   exx_fraction, screening_parameter, &
-                                  gau_parameter
+                                  gau_parameter, rsh_beta
   USE exch_gga
   USE beef_interface, ONLY: beefx
   !
@@ -534,7 +547,7 @@ SUBROUTINE gcx_spin( length, rho_in, grho2_in, sx_tot, v1x_out, v2x_out, err_out
 !$omp          iflag, in_err ) &
 !$omp  shared( rho_in, length, grho2_in, sx_tot, v1x_out, v2x_out,  &
 !$omp          igcx, exx_started, exx_fraction, screening_parameter,&
-!$omp          gau_parameter, err_out )
+!$omp          gau_parameter, rsh_beta, err_out )
 !$omp do
 #endif
   DO ir = 1, length  
@@ -590,11 +603,11 @@ SUBROUTINE gcx_spin( length, rho_in, grho2_in, sx_tot, v1x_out, v2x_out, err_out
         v2x_up = 2.0_DP * v2x_up
         v2x_dw = 2.0_DP * v2x_dw
         !
-     CASE( 3, 4, 8, 10, 12, 20, 23, 24, 25, 34, 35, 44, 45 )
+     CASE( 3, 4, 8, 10, 12, 20, 23, 24, 25, 34, 35, 44, 45, 52 )
         ! igcx=3:  PBE,  igcx=4:  revised PBE, igcx=8:  PBE0, igcx=10: PBEsol
         ! igcx=12: HSE,  igcx=20: gau-pbe,     igcx=23: obk8, igcx=24: ob86,
         ! igcx=25: ev93, igcx=34: PBE-AH, igcx=35: PBESOL-AH,
-        ! igcx=44: RPBE, igcx=45: W31X
+        ! igcx=44: RPBE, igcx=45: W31X,   igcx=52: RSH  ! Debug Zhenfei Liu 09/21/2015 (ported to QE 7.6: 2026-10-08)
         !
         iflag = 1
         IF ( igcx== 4 ) iflag = 2
@@ -680,6 +693,22 @@ SUBROUTINE gcx_spin( length, rho_in, grho2_in, sx_tot, v1x_out, v2x_out, err_out
            v2x_up = v2x_up - exx_fraction * v2xsr_up * 2.0_DP
            v2x_dw = v2x_dw - exx_fraction * v2xsr_dw * 2.0_DP
            !
+        ! Debug Zhenfei Liu 09/23/2015 (ported to QE 7.6: 2026-10-08)
+        ELSEIF ( igcx == 52 .AND. exx_started ) THEN
+           ! RSH: generalised range-separated hybrid
+           CALL pbexsr( rho_up, grho2_up, sxsr_up, v1xsr_up, &
+                                          v2xsr_up, screening_parameter, in_err )
+           CALL pbexsr( rho_dw, grho2_dw, sxsr_dw, v1xsr_dw, &
+                                          v2xsr_dw, screening_parameter, in_err )
+           !
+           sx_tot(ir) = (1.0_DP - exx_fraction - rsh_beta)*sx_tot(ir) + &
+                        rsh_beta*0.5_DP * ( sxsr_up*rnull_up + sxsr_dw*rnull_dw )
+           v1x_up = (1.0_DP - exx_fraction - rsh_beta)*v1x_up + rsh_beta*v1xsr_up
+           v1x_dw = (1.0_DP - exx_fraction - rsh_beta)*v1x_dw + rsh_beta*v1xsr_dw
+           v2x_up = (1.0_DP - exx_fraction - rsh_beta)*v2x_up + rsh_beta*v2xsr_up*2.0_DP
+           v2x_dw = (1.0_DP - exx_fraction - rsh_beta)*v2x_dw + rsh_beta*v2xsr_dw*2.0_DP
+           !
+        ! DONE Debug.
         ENDIF
         !
      CASE( 9 )                    ! B3LYP

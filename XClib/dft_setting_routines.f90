@@ -22,11 +22,13 @@ MODULE dft_setting_routines
   PUBLIC :: xclib_set_dft_from_name, xclib_set_dft_IDs,           &
             xclib_set_auxiliary_flags, xclib_set_threshold,       &
             xclib_set_exx_fraction, xclib_set_finite_size_volume, &
-            set_screening_parameter, set_gau_parameter
-  PUBLIC :: xclib_get_name, xclib_get_ID,             & 
+            set_screening_parameter, set_gau_parameter,          &
+            set_rsh_beta
+  PUBLIC :: xclib_get_name, xclib_get_ID,             &
             xclib_get_dft_short, xclib_get_dft_long,  &
             xclib_get_exx_fraction, xclib_get_finite_size_cell_volume, &
-            get_screening_parameter, get_gau_parameter
+            get_screening_parameter, get_gau_parameter,          &
+            get_rsh_beta
   PUBLIC :: xclib_dft_is, xclib_dft_is_libxc, xclib_init_libxc,  &
             start_exx, stop_exx, dft_has_finite_size_correction, &
             exx_is_active, igcc_is_lyp, xclib_reset_dft, dft_force_hybrid, &
@@ -504,6 +506,7 @@ CONTAINS
     USE dft_setting_params,  ONLY: iexch, icorr, igcx, igcc, imeta, imetac, &
                                    islda, isgradient, ismeta, exx_fraction, &
                                    screening_parameter, gau_parameter,      &
+                                   rsh_beta,                                &
                                    ishybrid, has_finite_size_correction,    &
                                    is_libxc, exx_term, max_flags
 #if defined(__LIBXC)
@@ -562,6 +565,15 @@ CONTAINS
        exx_fraction = 0.24_DP
        gau_parameter = 0.150_DP
     ENDIF
+    ! Debug Zhenfei Liu 09/21/2015 : default RSH params, same as HSE for alpha=0.25, beta=0.0 (ported to QE 7.6: 2026-10-08)
+    ! RSH (generalised range-separated hybrid)
+    IF ( igcx==52 .AND. .NOT.is_libxc(3) ) THEN
+       exx_fraction = 0.25_DP
+       rsh_beta = 0.0_DP
+       screening_parameter = 0.106_DP
+       WRITE( stdout,'(5x,a,f12.7)') 'RSH Beta parameter set: ', rsh_beta
+    ENDIF
+    ! DONE Debug.
     ! HF or OEP
     IF ( iexch==4 .AND. .NOT.is_libxc(1)) exx_fraction = 1.0_DP
     IF ( iexch==5 .AND. .NOT.is_libxc(1)) exx_fraction = 1.0_DP
@@ -697,7 +709,7 @@ CONTAINS
     REAL(DP), INTENT(IN) :: exx_fraction_
     !! Imposed value of exact exchange fraction
     exx_fraction = exx_fraction_
-    WRITE( stdout,'(5x,a,f6.2)') 'EXX fraction changed: ', exx_fraction
+    WRITE( stdout,'(5x,a,f12.7)') 'EXX fraction changed: ', exx_fraction
     RETURN
   END SUBROUTINE xclib_set_exx_fraction
   !-----------------------------------------------------------------------
@@ -754,7 +766,7 @@ CONTAINS
     lxc_cond4 = (igcx==0 .AND.is_libxc(4) .AND. fkind==XC_EXCHANGE_CORRELATION)
 #endif
     IF ((ABS(scrparm_)>0.d0.AND.(igcx/=0.AND.igcx/=12.AND.(igcx<32.OR.igcx>35) &
-        .AND.igcx/=47).AND..NOT.is_libxc(3))) THEN
+        .AND.igcx/=47.AND.igcx/=52).AND..NOT.is_libxc(3))) THEN
       IF (.NOT.lxc_cond4) THEN
         CALL xclib_infomsg( 'set_screening_parameter', 'WARNING: the screening &
                              &parameter seems inconsistent with the chosen inpu&
@@ -804,6 +816,29 @@ CONTAINS
     get_gau_parameter = gau_parameter
     RETURN
   END FUNCTION get_gau_parameter
+  !-----------------------------------------------------------------------
+  ! Debug Zhenfei Liu 9/22/2015 (ported to QE 7.6: 2026-10-08)
+  SUBROUTINE set_rsh_beta( rshbeta_ )
+    !! Impose RSH beta parameter (fraction of erf-screened LR Fock exchange)
+    USE kind_l,             ONLY: DP
+    USE dft_setting_params, ONLY: rsh_beta
+    IMPLICIT NONE
+    REAL(DP), INTENT(IN) :: rshbeta_
+    rsh_beta = rshbeta_
+    WRITE( stdout,'(5x,a,f12.7)') 'RSH Beta parameter set: ', rsh_beta
+    RETURN
+  END SUBROUTINE set_rsh_beta
+  !-----------------------------------------------------------------------
+  FUNCTION get_rsh_beta()
+    !! Recover RSH beta parameter
+    USE kind_l,             ONLY: DP
+    USE dft_setting_params, ONLY: rsh_beta
+    IMPLICIT NONE
+    REAL(DP) :: get_rsh_beta
+    get_rsh_beta = rsh_beta
+    RETURN
+  END FUNCTION get_rsh_beta
+  ! DONE Debug.
   !-----------------------------------------------------------------------
   !
   !

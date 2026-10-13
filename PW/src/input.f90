@@ -290,7 +290,7 @@ SUBROUTINE control_iosys()
   USE control_flags, ONLY : isolve, max_cg_iter, david, &
                             rmm_ndim, rmm_conv, gs_nblock, rmm_with_davidson, &
                             tr2, imix, gamma_only, tnosep, tnoseh, &
-                            nmix, iverbosity, smallmem, nexxiter, niter, &
+                            nmix, iverbosity, smallmem, nexxiter, pert_hyb, niter, &
                             io_level, ethr, lscf, lbfgs, lmd, lforce, &
                             lbands, lconstrain, restart, lensemb, &
                             llondon, ldftd3, do_makov_payne, lxdm, &
@@ -391,7 +391,7 @@ SUBROUTINE control_iosys()
   !
   ! ... ELECTRONS namelist
   !
-  USE input_parameters, ONLY : exx_maxstep, electron_maxstep, mixing_mode, mixing_beta, &
+  USE input_parameters, ONLY : exx_maxstep, perturb_hyb, electron_maxstep, mixing_mode, mixing_beta, &
                                mixing_ndim, mixing_fixed_ns, conv_thr,     &
                                tqr, tq_smoothing, tbeta_smoothing,         &
                                diago_thr_init,                             &
@@ -1006,8 +1006,11 @@ SUBROUTINE control_iosys()
   !
   ethr = diago_thr_init
   tr2   = conv_thr
-  nexxiter = exx_maxstep
-  niter = electron_maxstep
+  nexxiter  = exx_maxstep
+  ! Debug Zhenfei Liu 10/21/2015 (ported to QE 7.6: 2026-10-08)
+  pert_hyb  = perturb_hyb
+  ! DONE Debug.
+  niter     = electron_maxstep
   adapt_thr = adaptive_thr
   tr2_init  = conv_thr_init
   tr2_multi = conv_thr_multi
@@ -2128,12 +2131,12 @@ SUBROUTINE exx_iosys ( ecutwfc, ecutrho )
                               exxdiv_treatment, yukawa, ecutvcut,          &
                               gau_parameter, localization_thr, scdm, ace,  &
                               scdmden, scdmgrd, nscdm, n_proj,             & 
-                              exx_fraction, exx_type, screening_parameter, ecutfock 
+                              exx_fraction, exx_type, screening_parameter, rsh_beta, ecutfock
   USE io_global,     ONLY : stdout
   USE klist,         ONLY : tot_charge
   USE ions_base,     ONLY : nat, ityp, zv
   USE xc_lib,        ONLY:  xclib_dft_is
-  USE xc_lib,        ONLY : xclib_set_exx_fraction, set_screening_parameter
+  USE xc_lib,        ONLY : xclib_set_exx_fraction, set_screening_parameter, set_rsh_beta
   USE exx_base,      ONLY : x_gamma_extrapolation_ => x_gamma_extrapolation, &
                             nq1, nq2, nq3, exx_bgrp_type, EXX_BGRP_BANDS, EXX_BGRP_PAIRS, &
                             exxdiv_treatment_ => exxdiv_treatment, &
@@ -2188,6 +2191,10 @@ SUBROUTINE exx_iosys ( ecutwfc, ecutrho )
   !
   IF (screening_parameter >= 0.0_DP) &
         & CALL set_screening_parameter(screening_parameter)
+  !
+  ! Debug Zhenfei Liu 9/22/2015 (ported to QE 7.6: 2026-10-08)
+  IF (rsh_beta /= -1.0_DP) CALL set_rsh_beta(rsh_beta)
+  ! DONE Debug.
   !
   IF (xclib_dft_is('hybrid')) WRITE(stdout, &
      '(/,5x,"Exact exchange band parallelism type set to ",A/)' ) trim(adjustl(exx_type))
