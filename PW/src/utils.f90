@@ -363,9 +363,11 @@ SUBROUTINE invchol_k( n, A )
   !! the input matrix
   !
   INTEGER :: INFO
+  INTEGER, SAVE :: call_id = 0
 
+  call_id = call_id + 1
+  CALL chol_diag('invchol_k', n, A, n, 'L', call_id)
   INFO = -1
-  CALL chol_diag('invchol_k', n, A, n, 'L')
   CALL ZPOTRF( 'L', n, A, n, INFO )
   CALL errinfo('ZPOTRF','Cholesky failed in invchol.',INFO)
   INFO = -1
@@ -374,7 +376,7 @@ SUBROUTINE invchol_k( n, A )
   Call MatSymm_k('L','L',A, n)
 
 CONTAINS
-  SUBROUTINE chol_diag(label, n, a, lda, uplo)
+  SUBROUTINE chol_diag(label, n, a, lda, uplo, cid)
     USE kinds,    ONLY : DP
     USE mp_world, ONLY : mpime
     USE, INTRINSIC :: ieee_arithmetic, ONLY : ieee_is_nan
@@ -383,6 +385,7 @@ CONTAINS
     INTEGER,          INTENT(IN) :: n, lda
     COMPLEX(DP),      INTENT(IN) :: a(lda,n)
     CHARACTER(LEN=1), INTENT(IN) :: uplo      ! same uplo as the ZPOTRF call
+    INTEGER,          INTENT(IN) :: cid
     COMPLEX(DP), ALLOCATABLE :: b(:,:), work(:)
     REAL(DP),    ALLOCATABLE :: w(:), rwork(:)
     INTEGER  :: i, info, lwork, nnan, iun
@@ -393,14 +396,14 @@ CONTAINS
     amax     = MAXVAL( ABS(a(1:n,1:n)) )
     herm_err = MAXVAL( ABS(a(1:n,1:n) - CONJG(TRANSPOSE(a(1:n,1:n)))) )
     !
-    WRITE(0,'(A,I5,1X,A,A,I6,A,I8)') 'CHOLDBG r',mpime,label,' n=',n,' nNaN=',nnan
+    WRITE(0,'(A,I6,A,I5,1X,A,A,I6,A,I8)') 'CHOLDBG call=',cid,' r',mpime,label,' n=',n,' nNaN=',nnan
     WRITE(0,'(A,ES12.4,A,ES12.4)')   'CHOLDBG   max|A|=',amax,'  max|A-A^H|=',herm_err
     DO i = 1, n
        WRITE(0,'(A,I5,2ES16.6)') 'CHOLDBG   diag', i, a(i,i)
     END DO
     !
     ! raw dump for offline analysis (numpy: np.fromfile(f, complex128).reshape(n,n,order='F'))
-    WRITE(fname,'(A,I4.4,A)') 'choldbg_r', mpime, '.bin'
+    WRITE(fname,'(A,I6.6,A,I4.4,A)') 'choldbg_c', cid, '_r', mpime, '.bin'
     OPEN(NEWUNIT=iun, FILE=fname, ACCESS='stream', FORM='unformatted', STATUS='replace')
     WRITE(iun) a(1:n,1:n)
     CLOSE(iun)
