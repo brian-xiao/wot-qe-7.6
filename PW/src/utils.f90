@@ -365,6 +365,7 @@ SUBROUTINE invchol_k( n, A )
   INTEGER :: INFO
 
   INFO = -1
+  CALL chol_diag('invchol_k', n, A, n, 'L')
   CALL ZPOTRF( 'L', n, A, n, INFO )
   CALL errinfo('ZPOTRF','Cholesky failed in invchol.',INFO)
   INFO = -1
@@ -372,6 +373,49 @@ SUBROUTINE invchol_k( n, A )
   CALL errinfo('ZTRTRI','inversion failed in invchol.',INFO)
   Call MatSymm_k('L','L',A, n)
 
+CONTAINS
+  SUBROUTINE chol_diag(label, n, a, lda, uplo)
+    USE kinds,    ONLY : DP
+    USE mp_world, ONLY : mpime
+    USE, INTRINSIC :: ieee_arithmetic, ONLY : ieee_is_nan
+    IMPLICIT NONE
+    CHARACTER(LEN=*), INTENT(IN) :: label
+    INTEGER,          INTENT(IN) :: n, lda
+    COMPLEX(DP),      INTENT(IN) :: a(lda,n)
+    CHARACTER(LEN=1), INTENT(IN) :: uplo      ! same uplo as the ZPOTRF call
+    COMPLEX(DP), ALLOCATABLE :: b(:,:), work(:)
+    REAL(DP),    ALLOCATABLE :: w(:), rwork(:)
+    INTEGER  :: i, info, lwork, nnan, iun
+    REAL(DP) :: herm_err, amax
+    CHARACTER(LEN=64) :: fname
+    !
+    nnan     = COUNT( ieee_is_nan(DBLE(a(1:n,1:n))) .OR. ieee_is_nan(AIMAG(a(1:n,1:n))) )
+    amax     = MAXVAL( ABS(a(1:n,1:n)) )
+    herm_err = MAXVAL( ABS(a(1:n,1:n) - CONJG(TRANSPOSE(a(1:n,1:n)))) )
+    !
+    WRITE(0,'(A,I5,1X,A,A,I6,A,I8)') 'CHOLDBG r',mpime,label,' n=',n,' nNaN=',nnan
+    WRITE(0,'(A,ES12.4,A,ES12.4)')   'CHOLDBG   max|A|=',amax,'  max|A-A^H|=',herm_err
+    DO i = 1, n
+       WRITE(0,'(A,I5,2ES16.6)') 'CHOLDBG   diag', i, a(i,i)
+    END DO
+    !
+    ! raw dump for offline analysis (numpy: np.fromfile(f, complex128).reshape(n,n,order='F'))
+    WRITE(fname,'(A,I4.4,A)') 'choldbg_r', mpime, '.bin'
+    OPEN(NEWUNIT=iun, FILE=fname, ACCESS='stream', FORM='unformatted', STATUS='replace')
+    WRITE(iun) a(1:n,1:n)
+    CLOSE(iun)
+    !
+    IF (nnan > 0) RETURN
+    ALLOCATE( b(n,n), w(n), rwork(MAX(1,3*n-2)), work(1) )
+    b = a(1:n,1:n)
+    CALL ZHEEV('N', uplo, n, b, n, w, work, -1, rwork, info)          ! workspace query
+    lwork = MAX(1, INT(DBLE(work(1)))) ; DEALLOCATE(work) ; ALLOCATE(work(lwork))
+    CALL ZHEEV('N', uplo, n, b, n, w, work, lwork, rwork, info)
+    WRITE(0,'(A,I4,A,ES14.5,A,ES14.5,A,I6)') 'CHOLDBG   zheev info=',info, &
+          '  eig_min=',w(1),'  eig_max=',w(n),'  n(eig<=0)=',COUNT(w <= 0._DP)
+    WRITE(0,'(A,8ES12.4)') 'CHOLDBG   lowest:', w(1:MIN(n,8))
+    DEALLOCATE(b, w, rwork, work)
+  END SUBROUTINE chol_diag
 END SUBROUTINE invchol_k
 !
 !--------------------------------------------------------------------------
