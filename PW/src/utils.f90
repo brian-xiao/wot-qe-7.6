@@ -363,10 +363,14 @@ SUBROUTINE invchol_k( n, A )
   !! the input matrix
   !
   INTEGER :: INFO
+#if defined(__CHOL_DIAG)
   INTEGER, SAVE :: call_id = 0
+#endif
 
+#if defined(__CHOL_DIAG)
   call_id = call_id + 1
   CALL chol_diag('invchol_k', n, A, n, 'L', call_id)
+#endif
   INFO = -1
   CALL ZPOTRF( 'L', n, A, n, INFO )
   CALL errinfo('ZPOTRF','Cholesky failed in invchol.',INFO)
@@ -374,6 +378,8 @@ SUBROUTINE invchol_k( n, A )
   CALL ZTRTRI( 'L', 'N', n, A, n, INFO )
   CALL errinfo('ZTRTRI','inversion failed in invchol.',INFO)
   Call MatSymm_k('L','L',A, n)
+
+#if defined(__CHOL_DIAG)
 
 CONTAINS
   SUBROUTINE chol_diag(label, n, a, lda, uplo, cid)
@@ -419,6 +425,7 @@ CONTAINS
     WRITE(0,'(A,8ES12.4)') 'CHOLDBG   lowest:', w(1:MIN(n,8))
     DEALLOCATE(b, w, rwork, work)
   END SUBROUTINE chol_diag
+#endif
 END SUBROUTINE invchol_k
 !
 !--------------------------------------------------------------------------
