@@ -1000,8 +1000,8 @@ MODULE exx_base
         ! Debug Zhenfei Liu 9/27/2015 (ported to QE 7.6: 2026-10-08)
         ! this equals: (alpha+beta)*1 - beta*(1-exp[-q^2/4mu^2])
         IF ( beta_in_rsh /= 0._DP ) THEN
-           aa = aa - EXP( -alpha * qq) * (1._dp + (beta_in_rsh/exxalfa) * &
-                EXP(-qq/4.d0/erfc_scrlen**2)) * dq
+                aa = aa + EXP( -alpha * qq) * (beta_in_rsh/exxalfa) * &
+                        EXP(-qq/4.d0/erfc_scrlen**2) * dq
         ! DONE Debug.
         ELSEIF ( erfc_scrlen > 0 ) THEN
            aa = aa  -EXP( -alpha * qq) * EXP(-qq/4.d0/erfc_scrlen**2)*dq
